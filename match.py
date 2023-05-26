@@ -1,9 +1,20 @@
 from db.aurora import AuroraExecutor
+from db.athena import AthenaExecuter
+from mlconfig import MlConfig
+
+
 class  MatchProvider:
-    def __init__(self,store):
-        sql=self.getQuery(store)
-        ae=AuroraExecutor()
-        df=ae.execute(sql)
+    def __init__(self):
+        self.aurora_executor=AuroraExecutor()
+        self.conf=MlConfig()
+        db_name=self.conf.getValue('main','not_match_db')
+        self.athena_executor=AthenaExecuter(db_name)
+        
+
+    def init_customer_matches(self):
+        store=self.conf.getValue('main','store')
+        customer_matches_query=self.get_customer_matches_query(store)
+        df=self.aurora_executor.execute(customer_matches_query)
         df['sku_uuid_a'] = df['base_sku'].astype(str) + '<>' + \
                                 df['base_source_store'].str.split('_').str[0] + '<>' + \
                                 df['base_source_store'].str.split('_').str[1] 
@@ -13,8 +24,8 @@ class  MatchProvider:
                                     df['comp_source_store'].str.split('_').str[1] 
         
         self.match_df=df
-        
-    def getQuery(self,store):
+
+    def get_customer_matches_query(self,store):
         table = "matches"
         
         cols = "company_code,base_upc,base_sku,base_source_store, \
@@ -46,3 +57,13 @@ class  MatchProvider:
         print(f'Final deleted_match from match library {deleted_match_df.shape[0]}')
         self.deleted_match_df=deleted_match_df
         return deleted_match_df
+
+    def get_not_matches(self):
+        query="""
+        select concat(lower(base_sku),'<>',replace(base_source_store,'_','<>')) as sku_uuid_a,
+        concat(lower(comp_sku),'<>',replace(comp_source_store,'_','<>')) as sku_uuid_b
+        from fastlane_unsuccessful_demo"""
+        df=self.athena_executor.execute(query)
+        print('unsuccess matches',df.shape)
+        return df
+
