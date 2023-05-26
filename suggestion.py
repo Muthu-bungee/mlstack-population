@@ -10,7 +10,7 @@ class Suggestion_Provider:
         print('dbname in sugg is',db_name)
         self.executor=AthenaExecuter(db_name)
         
-    def get_suggestions_from_Db(self,base_store,score):
+    def _get_suggestions_from_Db(self,base_store,score):
         query = "SELECT * FROM embedder_matches_grocery_18may2023 where\
         (base_source_store not in ('<>shoprite','<>cvs') and comp_source_store not in ('<>shoprite','<>cvs')) and\
         (base_source_store = '{0}' or comp_source_store = '{0}')\
@@ -20,7 +20,7 @@ class Suggestion_Provider:
         return df
     
     def get_suggestions(self,base_store,score):
-        directed_suggestions_df=self.get_suggestions_from_Db(base_store,score)
+        directed_suggestions_df=self._get_suggestions_from_Db(base_store,score)
         undirected_suggestions_df = directed_suggestions_df.copy().rename({'uuid_a':'uuid_b','uuid_b':'uuid_a',
                                                           'base_source_store':'comp_source_store',
                                                           'comp_source_store':'base_source_store'},axis='columns')

@@ -13,7 +13,7 @@ class  MatchProvider:
 
     def init_customer_matches(self):
         store=self.conf.getValue('main','store')
-        customer_matches_query=self.get_customer_matches_query(store)
+        customer_matches_query=self._get_customer_matches_query(store)
         df=self.aurora_executor.execute(customer_matches_query)
         df['sku_uuid_a'] = df['base_sku'].astype(str) + '<>' + \
                                 df['base_source_store'].str.split('_').str[0] + '<>' + \
@@ -25,7 +25,7 @@ class  MatchProvider:
         
         self.match_df=df
 
-    def get_customer_matches_query(self,store):
+    def _get_customer_matches_query(self,store):
         table = "matches"
         
         cols = "company_code,base_upc,base_sku,base_source_store, \

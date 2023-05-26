@@ -8,7 +8,7 @@ class Product_Data_Provider:
     def __init__(self):
         pass
        # ! aws s3 sync s3://ml-stack.uat/type=ml_input/domain=grocery/year=2023/month=05/day=18/ latest_prod_data_path
-    def download_grocery_product_data(self):
+    def _download_grocery_product_data(self):
         file_type='parquet'
         conf=MlConfig()
         latest_prod_data_path=conf.getValue('main','latest_prod_data_path')
@@ -25,7 +25,7 @@ class Product_Data_Provider:
         
     
     def get_product_data_dict(self,prod_list):
-        grocery_product_data_df=self.download_grocery_product_data()
+        grocery_product_data_df=self._download_grocery_product_data()
         product_data_df = grocery_product_data_df[grocery_product_data_df['uuid'].isin(prod_list)]
         product_data_dict = product_data_df.set_index('uuid').T.to_dict()
         return product_data_dict
