@@ -1,6 +1,9 @@
 from db.aurora import AuroraExecutor
 from db.athena import AthenaExecuter
 from mlconfig import MlConfig
+from tqdm.notebook import tqdm
+from collections import defaultdict
+import pandas as pd
 
 
 class  MatchProvider:
@@ -39,31 +42,49 @@ class  MatchProvider:
              
         where = "{} and match_status = 'product_found' and comp_sku is not null".format(cond)
         
-        sql = "SELECT {} FROM {} where {} limit 10".format(cols, table, where)
-        
-        print('sql is ',sql)
+        sql = "SELECT {} FROM {} where {} ".format(cols, table, where)
+        print('sql to fetch customer match  ',sql)
         return sql
     
     def get_active_matches(self):
         match_df=self.match_df
         active_match_df = match_df[match_df.deleted_date.isna()]
-        print(f'Final active matches from match library {active_match_df.shape[0]}')
         self.active_match_df=active_match_df
         return active_match_df
     
     def get_deleted_matches(self):
         match_df=self.match_df
         deleted_match_df = match_df[~match_df.deleted_date.isna()]
-        print(f'Final deleted_match from match library {deleted_match_df.shape[0]}')
         self.deleted_match_df=deleted_match_df
-        return deleted_match_df
+        deleted_matches = set()
+        deleted_match_df = deleted_match_df[['sku_uuid_a','sku_uuid_b']]
+    
+        for ind in tqdm(deleted_match_df.index):
+            deleted_matches.add((match_df.at[ind,'sku_uuid_a'].lower(),
+                           match_df.at[ind,'sku_uuid_b'].lower()))
+
+        return deleted_matches
 
     def get_not_matches(self):
         query="""
         select concat(lower(base_sku),'<>',replace(base_source_store,'_','<>')) as sku_uuid_a,
         concat(lower(comp_sku),'<>',replace(comp_source_store,'_','<>')) as sku_uuid_b
         from fastlane_unsuccessful_demo"""
-        df=self.athena_executor.execute(query)
-        print('unsuccess matches',df.shape)
-        return df
+        print('sql to fetch nomtches ',query)
+        not_match_df=self.athena_executor.execute(query)
+        return not_match_df
+    
+    def get_uuid_to_store_dict(self,match_df,nomatch_df):
+        matches = set()
+        all_match_df = pd.concat([match_df[['sku_uuid_a','sku_uuid_b']], nomatch_df[['sku_uuid_a','sku_uuid_b']]]).reset_index(drop=True)
+
+        for ind in tqdm(all_match_df.index):
+            matches.add((all_match_df.at[ind,'sku_uuid_a'].lower(),
+                            all_match_df.at[ind,'sku_uuid_b'].lower()))
+            
+        match_and_nomatch_store_dict = defaultdict(set)
+        for uuid_a,uuid_b in tqdm(matches):
+            match_and_nomatch_store_dict[uuid_a].add(uuid_b.split('<>')[-1])
+            match_and_nomatch_store_dict[uuid_b].add(uuid_a.split('<>')[-1])
+        return match_and_nomatch_store_dict
 

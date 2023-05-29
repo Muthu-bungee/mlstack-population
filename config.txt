@@ -2,7 +2,7 @@
 suggestion_db_name=ml_internal_uat
 match_db_name=matchlibrary
 match_table_name=matches
-latest_prod_data_path=D://Workspace//mlstack-population//product_data
+latest_prod_data_path=D://Workspace//mlstack-population//product_data1
 store=hannaford
 source_store=hannaford<>hannaford
 score=0.80
